@@ -1,0 +1,296 @@
+openapi: 3.1.0
+info:
+    title: Api
+    version: 0.1.0
+    description: API specification
+servers:
+    - url: /api
+      description: Base API path
+tags:
+    - name: health
+      description: Health operations
+    - name: worldcup
+      description: World Cup Oracle simulation endpoints
+paths:
+    /healthz:
+        get:
+            operationId: healthCheck
+            tags: [health]
+            summary: Health check
+            description: Returns server health status
+            responses:
+                "200":
+                    description: Healthy
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/HealthStatus"
+    /worldcup/meta:
+        get:
+            operationId: getTournamentMeta
+            tags: [worldcup]
+            summary: Tournament metadata
+            description: Dataset and simulation metadata for the dashboard header
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/TournamentMeta"
+    /worldcup/teams:
+        get:
+            operationId: listTeams
+            tags: [worldcup]
+            summary: List World Cup teams
+            description: All 48 qualified teams with their current Elo rating, for dropdowns
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Team"
+    /worldcup/leaderboard:
+        get:
+            operationId: getLeaderboard
+            tags: [worldcup]
+            summary: Title probability leaderboard
+            description: All 48 teams ranked by Monte Carlo title probability
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/LeaderboardEntry"
+    /worldcup/fixtures:
+        get:
+            operationId: listFixtures
+            tags: [worldcup]
+            summary: Full tournament bracket
+            description: All 104 matches of the tournament (group stage + knockout) with results where known
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Fixture"
+    /worldcup/simulate-match:
+        post:
+            operationId: simulateMatch
+            tags: [worldcup]
+            summary: Simulate a single match between two teams
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/MatchSimulationInput"
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/MatchSimulationResult"
+                "400":
+                    description: Invalid team codes
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ErrorResponse"
+components:
+    schemas:
+        HealthStatus:
+            type: object
+            properties:
+                status:
+                    type: string
+            required:
+                - status
+        ErrorResponse:
+            type: object
+            properties:
+                error:
+                    type: string
+            required:
+                - error
+        Team:
+            type: object
+            description: A national team competing in the 2026 World Cup
+            properties:
+                code:
+                    type: string
+                    description: Stable short code used to reference this team (e.g. "BRA")
+                name:
+                    type: string
+                flagCode:
+                    type: string
+                    description: flagcdn.com country code (e.g. "br", "gb-eng")
+                confederation:
+                    type: string
+                elo:
+                    type: number
+                group:
+                    type: string
+                    description: Group letter (A-L)
+            required:
+                - code
+                - name
+                - flagCode
+                - confederation
+                - elo
+                - group
+        LeaderboardEntry:
+            type: object
+            description: A team's ranking and Monte Carlo tournament outlook
+            properties:
+                code:
+                    type: string
+                name:
+                    type: string
+                flagCode:
+                    type: string
+                confederation:
+                    type: string
+                elo:
+                    type: number
+                group:
+                    type: string
+                stage:
+                    type: string
+                    description: Furthest stage reached or currently competing in
+                eliminated:
+                    type: boolean
+                titleProbability:
+                    type: number
+                finalProbability:
+                    type: number
+                groupWinProbability:
+                    type: number
+            required:
+                - code
+                - name
+                - flagCode
+                - confederation
+                - elo
+                - group
+                - stage
+                - eliminated
+                - titleProbability
+                - finalProbability
+                - groupWinProbability
+        Fixture:
+            type: object
+            description: A single match in the tournament bracket
+            properties:
+                round:
+                    type: string
+                    description: "e.g. Group A, Round of 32, Quarterfinal, Semifinal, Final, Third Place Playoff"
+                date:
+                    type: string
+                teamACode:
+                    type: ["string", "null"]
+                teamAName:
+                    type: ["string", "null"]
+                teamBCode:
+                    type: ["string", "null"]
+                teamBName:
+                    type: ["string", "null"]
+                teamAScore:
+                    type: ["integer", "null"]
+                teamBScore:
+                    type: ["integer", "null"]
+                status:
+                    type: string
+                    description: "completed or upcoming"
+            required:
+                - round
+                - date
+                - teamACode
+                - teamAName
+                - teamBCode
+                - teamBName
+                - teamAScore
+                - teamBScore
+                - status
+        MatchSimulationInput:
+            type: object
+            properties:
+                teamACode:
+                    type: string
+                teamBCode:
+                    type: string
+            required:
+                - teamACode
+                - teamBCode
+        MatchSimulationResult:
+            type: object
+            properties:
+                teamACode:
+                    type: string
+                teamAName:
+                    type: string
+                teamBCode:
+                    type: string
+                teamBName:
+                    type: string
+                teamAWinProbability:
+                    type: number
+                drawProbability:
+                    type: number
+                teamBWinProbability:
+                    type: number
+                teamAExpectedGoals:
+                    type: number
+                teamBExpectedGoals:
+                    type: number
+                teamALikelyGoals:
+                    type: integer
+                teamBLikelyGoals:
+                    type: integer
+            required:
+                - teamACode
+                - teamAName
+                - teamBCode
+                - teamBName
+                - teamAWinProbability
+                - drawProbability
+                - teamBWinProbability
+                - teamAExpectedGoals
+                - teamBExpectedGoals
+                - teamALikelyGoals
+                - teamBLikelyGoals
+        TournamentMeta:
+            type: object
+            properties:
+                totalHistoricalMatches:
+                    type: integer
+                datasetSinceYear:
+                    type: integer
+                simulations:
+                    type: integer
+                teamsCount:
+                    type: integer
+                asOfDate:
+                    type: string
+                currentStage:
+                    type: string
+                remainingFixtures:
+                    type: integer
+            required:
+                - totalHistoricalMatches
+                - datasetSinceYear
+                - simulations
+                - teamsCount
+                - asOfDate
+                - currentStage
+                - remainingFixtures
