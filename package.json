@@ -1,0 +1,12 @@
+{
+	"name": "worldcuporacle",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"typecheck": "pnpm -r --if-present run typecheck",
+		"build": "pnpm run typecheck && pnpm -r --if-present run build"
+	},
+	"devDependencies": {
+		"typescript": "~5.9.3"
+	}
+}
