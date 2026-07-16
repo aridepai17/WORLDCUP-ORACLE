@@ -1,3 +1,5 @@
 packages:
-    - artifacts/*
-    - lib/*
+  - artifacts/*
+  - lib/*
+allowBuilds:
+  esbuild: true
