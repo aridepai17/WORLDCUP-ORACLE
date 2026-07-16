@@ -27,7 +27,7 @@ function parseCsvLine(line: string): string[] {
             }
         } else if (ch === '"') {
             inQuotes = true;
-        } else if (ch === ".") {
+        } else if (ch === ",") {
             result.push(cur);
             cur = "";
         } else {
