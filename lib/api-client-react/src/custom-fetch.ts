@@ -263,6 +263,21 @@ async function parseSuccessBody(
         return null;
     }
 
+    if (responseType === "auto" && getMediaType(response.headers) === null) {
+        const raw = await response.text();
+        const normalized = stripBom(raw);
+        if (normalized.trim() === "") return null;
+
+        if (looksLikeJson(normalized)) {
+            try {
+                return JSON.parse(normalized);
+            } catch {
+                return raw;
+            }
+        }
+        return raw;
+    }
+
     const effectiveType = responseType === "auto" ? inferResponseType(response) : responseType;
 
     switch (effectiveType) {
