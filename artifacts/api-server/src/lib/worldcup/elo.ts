@@ -6,7 +6,8 @@ const CURRENT_YEAR = 2026;
 
 function tournamentWeight(tournament: string): number {
 	const t = tournament.toLowerCase();
-	if (t.includes("world cup") && !t.includes("qualification")) return 60;
+    if (t.includes("qualification") || t.includes("qualifying")) return 40;
+	if (t.includes("world cup")) return 60;
 	if (
 		t.includes("euro") ||
 		t.includes("copa américa") ||
@@ -20,13 +21,12 @@ function tournamentWeight(tournament: string): number {
 	) {
 		return 50;
 	}
-	if (t.includes("qualification") || t.includes("qualifying")) return 40;
 	if (t === "friendly") return 20;
 	return 30;
 }
 
-function recencyFactor(year: number): number {
-	const age = CURRENT_YEAR - year;
+function recencyFactor(year: number, targetYear: number): number {
+	const age = targetYear - year;
 	if (age <= 8) return 1.0;
 	if (age <= 20) return 0.85;
 	return 0.7;
@@ -49,6 +49,7 @@ export function computeEloRatings(
 	cutoffDate: string,
 ): Map<string, number> {
 	const ratings = new Map<string, number>();
+	const targetYear = Number(cutoffDate.slice(0, 4)) || 2026;
 
 	const rated = rows
 		.filter(
@@ -76,7 +77,7 @@ export function computeEloRatings(
 		const k =
 			K_BASE *
 			(weight / 40) *
-			recencyFactor(year) *
+			recencyFactor(year, targetYear) * 
 			goalDiffMultiplier(goalDiff);
 
 		const delta = k * (actualHome - expectedHome);
