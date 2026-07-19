@@ -138,12 +138,13 @@ function ContextMenuSubTrigger({
 }
 
 function ContextMenuSubContent({
+  className,
   ...props
 }: React.ComponentProps<typeof ContextMenuContent>) {
   return (
     <ContextMenuContent
       data-slot="context-menu-sub-content"
-      className="shadow-lg"
+      className={cn("shadow-lg", className)}
       side="right"
       {...props}
     />
