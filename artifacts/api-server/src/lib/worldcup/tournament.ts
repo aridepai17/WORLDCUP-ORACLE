@@ -66,6 +66,7 @@ function buildGroups(groupRows: MatchRow[]): Map<string, string> {
     const adjacency = new Map<string, Set<string>>();
     const addEdge = (a: string, b: string) => {
         if (!adjacency.has(a)) adjacency.set(a, new Set());
+        if (!adjacency.has(b)) adjacency.set(b, new Set());
         adjacency.get(a)!.add(b);
         adjacency.get(b)!.add(a);
     };
@@ -197,7 +198,7 @@ export function buildWorldCupData(csvText: string): WorldCupData {
         const goalsA = samplePoisson(lambdaA, rng);
         const goalsB = samplePoisson(lambdaB, rng);
         if (goalsA > goalsB) return teamA;
-        if (goalsB < goalsA) return teamB;
+        if (goalsB > goalsA) return teamB;
         // Draw: resolved via extra time + penalties, models as slightly Elo-weighted coin flip rather than another full goal simulation
         const diff = eloOf(teamA) - eloOf(teamB);
         const pA = 1 / (1 + Math.pow(10, -diff / 600));
