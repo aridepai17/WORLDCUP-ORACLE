@@ -39,7 +39,13 @@ router.get("/worldcup/fixtures", (req, res) => {
 });
 
 router.post("/worldcup/simulate-match", (req, res) => {
-	const body = SimulateMatchBody.parse(req.body);
+	const parseResult = SimulateMatchBody.safeParse(req.body);
+    if (!parseResult.success) {
+        res.status(400).json({ error: "Invalid request body", details: parseResult.error.issues });
+        return;
+    }
+
+    const body = parseResult.data;
 	const { eloByName } = getWorldCupData();
 	const teamA = TEAM_META_BY_CODE.get(body.teamACode);
 	const teamB = TEAM_META_BY_CODE.get(body.teamBCode);
