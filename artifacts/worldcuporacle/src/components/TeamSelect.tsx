@@ -41,10 +41,19 @@ export function TeamSelect({
 				setIsOpen(false);
 			}
 		}
+		function handleKeyDown(event: KeyboardEvent) {
+			if (event.key === "Escape" && isOpen) {
+				setIsOpen(false);
+				setSearch("");
+			}
+		}
 		document.addEventListener("mousedown", handleClickOutside);
-		return () =>
+		document.addEventListener("keydown", handleKeyDown);
+		return () => {
 			document.removeEventListener("mousedown", handleClickOutside);
-	}, []);
+			document.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [isOpen]);
 
 	return (
 		<div className="relative w-full" ref={containerRef}>
