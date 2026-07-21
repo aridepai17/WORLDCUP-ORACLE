@@ -48,10 +48,14 @@ export function FixturesList() {
 					const isUpcoming = fixture.status === "upcoming";
 					const teamAWon =
 						!isUpcoming &&
-						fixture.teamAScore! > fixture.teamBScore!;
+						fixture.teamAScore !== null &&
+						fixture.teamBScore !== null &&
+						fixture.teamAScore > fixture.teamBScore;
 					const teamBWon =
 						!isUpcoming &&
-						fixture.teamBScore! > fixture.teamAScore!;
+						fixture.teamAScore !== null &&
+						fixture.teamBScore !== null &&
+						fixture.teamBScore > fixture.teamAScore;
 
 					return (
 						<div
