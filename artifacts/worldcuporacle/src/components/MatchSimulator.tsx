@@ -3,7 +3,7 @@ import { useListTeams, useSimulateMatch } from "@workspace/api-client-react";
 import { TeamSelect } from "./TeamSelect";
 import { CountUp } from "./CountUp";
 import { motion, AnimatePresence } from "framer-motion";
-import { Swords, Info } from "lucide-react";
+import { Swords, Info, AlertCircle, RefreshCw } from "lucide-react";
 import { TeamFlag } from "./TeamFlag";
 
 export function MatchSimulator() {
@@ -20,6 +20,7 @@ export function MatchSimulator() {
 
 	const result = simulateMatch.data;
 	const isPending = simulateMatch.isPending;
+	const isError = simulateMatch.isError;
 
 	return (
 		<div className="bg-card border border-border/50 rounded-xl p-6 flex flex-col h-full">
@@ -80,7 +81,28 @@ export function MatchSimulator() {
 
 			<div className="flex-1 mt-6 relative min-h-[220px]">
 				<AnimatePresence mode="wait">
-					{!result && !isPending && (
+					{isError && (
+						<motion.div
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							className="absolute inset-0 flex flex-col items-center justify-center text-center border-2 border-destructive/50 rounded-lg p-6 bg-destructive/5"
+						>
+							<AlertCircle className="w-8 h-8 mb-3 text-destructive" />
+							<p className="font-mono text-sm text-destructive mb-3 max-w-[250px]">
+								Simulation failed. Please try again.
+							</p>
+							<button
+								onClick={handleSimulate}
+								className="flex items-center gap-2 px-4 py-2 bg-destructive/10 hover:bg-destructive/20 text-destructive rounded-md transition-colors text-sm font-mono"
+							>
+								<RefreshCw className="w-4 h-4" />
+								Retry
+							</button>
+						</motion.div>
+					)}
+
+					{!result && !isPending && !isError && (
 						<motion.div
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
@@ -231,7 +253,7 @@ export function MatchSimulator() {
 							<div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-border/50">
 								<div className="text-center">
 									<div className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider mb-1">
-										Expected Goals (xG)
+										Expected Goals (xG) - {result.teamACode}
 									</div>
 									<div className="text-xl font-mono font-bold">
 										<CountUp
@@ -242,7 +264,7 @@ export function MatchSimulator() {
 								</div>
 								<div className="text-center border-l border-border/50">
 									<div className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider mb-1">
-										Expected Goals (xG)
+										Expected Goals (xG) - {result.teamBCode}
 									</div>
 									<div className="text-xl font-mono font-bold">
 										<CountUp
