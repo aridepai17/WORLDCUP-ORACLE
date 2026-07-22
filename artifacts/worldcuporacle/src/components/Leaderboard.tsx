@@ -14,11 +14,22 @@ export function Leaderboard() {
 		);
 	}
 
+	// Ensure leaderboard is an array
+	const leaderboardArray = Array.isArray(leaderboard) ? leaderboard : [];
+
+	if (leaderboardArray.length === 0) {
+		return (
+			<div className="h-96 w-full flex items-center justify-center text-muted-foreground">
+				No leaderboard data available.
+			</div>
+		);
+	}
+
 	// Filter out teams with 0 probability if we want, or just show top N.
 	// The brief says "all 48 teams", so we'll show them, but maybe in a scrollable container.
 
 	const maxProbability = Math.max(
-		...leaderboard.map((t) => t.titleProbability),
+		...leaderboardArray.map((t) => t.titleProbability),
 	);
 
 	return (
@@ -38,7 +49,7 @@ export function Leaderboard() {
 			</div>
 
 			<div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
-				{leaderboard.map((team, index) => {
+				{leaderboardArray.map((team, index) => {
 					const isEliminated = team.eliminated;
 					const barWidth =
 						team.titleProbability > 0
@@ -111,26 +122,23 @@ export function Leaderboard() {
 									</div>
 								</div>
 
-								<div className="text-right flex flex-col items-end justify-center min-w-[56px] sm:min-w-[70px]">
-									<span
-										className={cn(
-											"text-lg font-mono font-bold",
-											isEliminated
-												? "text-muted-foreground"
-												: "text-primary",
-										)}
-									>
-										<CountUp
-											value={team.titleProbability * 100}
-											decimals={1}
-											suffix="%"
-											duration={1.5}
-										/>
-									</span>
-									<span className="text-[10px] text-muted-foreground font-mono uppercase">
-										Stage: {team.stage}
-									</span>
-								</div>
+						<div className="text-right flex flex-col items-end justify-center min-w-[56px] sm:min-w-[70px]">
+							<span
+								className={cn(
+									"text-lg font-mono font-bold",
+									isEliminated
+										? "text-muted-foreground"
+										: "text-primary",
+								)}
+							>
+								<CountUp
+									value={team.titleProbability * 100}
+									decimals={1}
+									suffix="%"
+									duration={1.5}
+								/>
+							</span>
+						</div>
 							</div>
 						</motion.div>
 					);
