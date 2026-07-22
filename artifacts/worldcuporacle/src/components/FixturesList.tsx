@@ -12,23 +12,21 @@ export function FixturesList() {
 		);
 	}
 
-	// Filter out placeholders, sort by date descending (most recent first) to see the story
-	const validFixtures = fixtures
-		.filter((f) => f.teamACode && f.teamBCode)
-		.sort(
-			(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+	// Ensure fixtures is an array
+	const fixturesArray = Array.isArray(fixtures) ? fixtures : [];
+
+	if (fixturesArray.length === 0) {
+		return (
+			<div className="h-64 w-full flex items-center justify-center text-muted-foreground">
+				No fixtures data available.
+			</div>
 		);
+	}
 
-	// Take the most recent 10 completed matches and next 5 upcoming
-	const completed = validFixtures
-		.filter((f) => f.status === "completed")
-		.slice(0, 10);
-	const upcoming = validFixtures
-		.filter((f) => f.status === "upcoming")
-		.reverse()
-		.slice(0, 5); // Reverse to get earliest upcoming first
-
-	const displayFixtures = [...upcoming, ...completed];
+	// Sort all valid fixtures chronologically (earliest first) to show the full tournament
+	const displayFixtures = fixturesArray
+		.filter((f) => f.round && f.date)
+		.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
 	return (
 		<div className="bg-card border border-border/50 rounded-xl flex flex-col h-[400px]">
@@ -88,7 +86,7 @@ export function FixturesList() {
 											: "text-foreground",
 									)}
 								>
-									{fixture.teamACode}
+									{fixture.teamACode ?? "TBD"}
 								</div>
 
 								<div className="bg-background px-2 sm:px-3 py-1 rounded border border-border/50 min-w-[48px] sm:min-w-[60px] text-center font-mono font-bold tracking-widest text-xs sm:text-sm shrink-0">
@@ -112,7 +110,7 @@ export function FixturesList() {
 											: "text-foreground",
 									)}
 								>
-									{fixture.teamBCode}
+									{fixture.teamBCode ?? "TBD"}
 								</div>
 							</div>
 
