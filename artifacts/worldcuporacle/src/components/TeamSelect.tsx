@@ -23,9 +23,12 @@ export function TeamSelect({
 	const [search, setSearch] = useState("");
 	const containerRef = useRef<HTMLDivElement>(null);
 
-	const selectedTeam = teams.find((t) => t.code === value);
+	// Ensure teams is an array
+	const teamsArray = Array.isArray(teams) ? teams : [];
 
-	const filteredTeams = teams.filter(
+	const selectedTeam = teamsArray.find((t) => t.code === value);
+
+	const filteredTeams = teamsArray.filter(
 		(t) =>
 			t.code !== disabledCode &&
 			(t.name.toLowerCase().includes(search.toLowerCase()) ||

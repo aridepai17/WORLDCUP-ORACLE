@@ -2,12 +2,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Route, Switch, Router as WouterRouter } from "wouter";
+import { setBaseUrl } from "@workspace/api-client-react";
 
 import { HeroStats } from "@/components/HeroStats";
 import { MatchSimulator } from "@/components/MatchSimulator";
 import { Leaderboard } from "@/components/Leaderboard";
 import { ChancesChart } from "@/components/ChancesChart";
 import { FixturesList } from "@/components/FixturesList";
+
+setBaseUrl(import.meta.env.VITE_API_URL ?? "");
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -25,7 +28,6 @@ function Home() {
 			<div className="fixed inset-0 pointer-events-none z-0">
 				<div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]"></div>
 				<div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-primary/5 rounded-full blur-[100px]"></div>
-				<div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
 			</div>
 
 			<div className="container mx-auto max-w-4xl px-3 sm:px-4 pt-4 sm:pt-8 relative z-10 flex flex-col gap-4 sm:gap-6">

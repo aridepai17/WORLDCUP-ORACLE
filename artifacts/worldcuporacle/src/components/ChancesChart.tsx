@@ -17,18 +17,19 @@ export function ChancesChart() {
 
 	const chartData = useMemo(() => {
 		if (!leaderboard) return [];
+		// Ensure leaderboard is an array
+		const leaderboardArray = Array.isArray(leaderboard) ? leaderboard : [];
+		if (leaderboardArray.length === 0) return [];
+		
 		// Take the top 16 teams that are NOT eliminated for a cleaner chart
-		const activeTeams = leaderboard.filter((t) => !t.eliminated);
-		const displayTeams =
-			activeTeams.length >= 8
-				? activeTeams.slice(0, 16)
-				: leaderboard.slice(0, 16);
+		const activeTeams = leaderboardArray.filter((t) => !t.eliminated);
+		const displayTeams = leaderboardArray;
 
 		return displayTeams
 			.map((t) => ({
 				name: t.code,
 				fullName: t.name,
-				finalChance: t.finalProbability * 100,
+				finalChance: t.preTournamentTitleProbability * 100,
 				groupWinChance: t.groupWinProbability * 100,
 				eliminated: t.eliminated,
 			}))
@@ -42,7 +43,7 @@ export function ChancesChart() {
 	}
 
 	return (
-		<div className="bg-card border border-border/50 rounded-xl flex flex-col h-[360px] sm:h-[440px]">
+		<div className="bg-card border border-border/50 rounded-xl flex flex-col w-full h-[600px] sm:h-[800px]">
 			<div className="p-4 md:p-6 border-b border-border/50 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
 				<div className="flex items-center gap-3">
 					<div className="p-2 bg-primary/10 rounded-lg">
@@ -68,8 +69,8 @@ export function ChancesChart() {
 				</div>
 			</div>
 
-			<div className="flex-1 p-4 md:p-6 min-h-0">
-				<ResponsiveContainer width="100%" height="100%">
+			<div className="flex-1 p-4 md:p-6 min-h-0 min-w-0">
+				<ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
 					<BarChart
 						data={chartData}
 						margin={{ top: 20, right: 0, left: -20, bottom: 0 }}
@@ -77,14 +78,14 @@ export function ChancesChart() {
 						<CartesianGrid
 							strokeDasharray="3 3"
 							vertical={false}
-							stroke="hsl(var(--border))"
+							stroke="var(--border)"
 						/>
 						<XAxis
 							dataKey="name"
 							axisLine={false}
 							tickLine={false}
 							tick={{
-								fill: "hsl(var(--muted-foreground))",
+								fill: "var(--muted-foreground)",
 								fontSize: 12,
 								fontFamily: "monospace",
 							}}
@@ -94,14 +95,14 @@ export function ChancesChart() {
 							axisLine={false}
 							tickLine={false}
 							tick={{
-								fill: "hsl(var(--muted-foreground))",
+								fill: "var(--muted-foreground)",
 								fontSize: 12,
 								fontFamily: "monospace",
 							}}
 							tickFormatter={(val) => `${val}%`}
 						/>
 						<Tooltip
-							cursor={{ fill: "hsl(var(--muted) / 0.2)" }}
+							cursor={{ fill: "var(--muted)", fillOpacity: 0.2 }}
 							content={({ active, payload }) => {
 								if (active && payload && payload.length) {
 									const data = payload[0].payload;
@@ -150,8 +151,11 @@ export function ChancesChart() {
 									key={`cell-final-${index}`}
 									fill={
 										entry.eliminated
-											? "hsl(var(--muted-foreground) / 0.5)"
-											: "hsl(var(--primary))"
+											? "var(--muted-foreground)"
+											: "var(--primary)"
+									}
+									fillOpacity={
+										entry.eliminated ? 0.5 : 1
 									}
 								/>
 							))}
@@ -164,10 +168,9 @@ export function ChancesChart() {
 							{chartData.map((entry, index) => (
 								<Cell
 									key={`cell-group-${index}`}
-									fill={
-										entry.eliminated
-											? "hsl(var(--muted-foreground) / 0.2)"
-											: "hsl(var(--muted-foreground) / 0.3)"
+									fill="var(--muted-foreground)"
+									fillOpacity={
+										entry.eliminated ? 0.2 : 0.3
 									}
 								/>
 							))}
