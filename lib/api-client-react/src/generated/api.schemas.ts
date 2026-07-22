@@ -44,6 +44,8 @@ export interface LeaderboardEntry {
   titleProbability: number;
   finalProbability: number;
   groupWinProbability: number;
+  /** Championship probability before the tournament began */
+  preTournamentTitleProbability: number;
 }
 
 /**

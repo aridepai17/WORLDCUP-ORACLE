@@ -62,7 +62,8 @@ export const GetLeaderboardResponseItem = zod.object({
   "eliminated": zod.boolean(),
   "titleProbability": zod.number(),
   "finalProbability": zod.number(),
-  "groupWinProbability": zod.number()
+  "groupWinProbability": zod.number(),
+  "preTournamentTitleProbability": zod.number().describe('Championship probability before the tournament began')
 }).describe('A team\'s ranking and Monte Carlo tournament outlook')
 export const GetLeaderboardResponse = zod.array(GetLeaderboardResponseItem)
 

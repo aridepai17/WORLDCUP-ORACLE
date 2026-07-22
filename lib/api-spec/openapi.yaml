@@ -176,6 +176,9 @@ components:
                     type: number
                 groupWinProbability:
                     type: number
+                preTournamentTitleProbability:
+                    type: number
+                    description: Championship probability before the tournament began
             required:
                 - code
                 - name
@@ -188,6 +191,7 @@ components:
                 - titleProbability
                 - finalProbability
                 - groupWinProbability
+                - preTournamentTitleProbability
         Fixture:
             type: object
             description: A single match in the tournament bracket
