@@ -1,7 +1,7 @@
 import { computeEloRatings } from "./elo";
 import { parseResultsCsv, type MatchRow } from "./csv";
-import { computeMatchModel, mulberry32, samplePoisson } from "./poisson";
-import { TEAM_META_BY_NAME, type TeamMeta } from "./teamMeta";
+import { computeMatchModel, expectedGoals, mulberry32, samplePoisson } from "./poisson";
+import { TEAM_META, TEAM_META_BY_NAME, type TeamMeta } from "./teamMeta";
 
 const WC_2026_CUTOFF = "2026-06-11";
 const SIMULATIONS = 10000;
@@ -22,6 +22,7 @@ export interface LeaderboardEntry extends Team {
     titleProbability: number;
     finalProbability: number;
     groupWinProbability: number;
+    preTournamentTitleProbability: number;
 }
 
 export interface Fixture {
@@ -62,44 +63,6 @@ interface GroupStanding {
     goalsFor: number;
 }
 
-function buildGroups(groupRows: MatchRow[]): Map<string, string> {
-    const adjacency = new Map<string, Set<string>>();
-    const addEdge = (a: string, b: string) => {
-        if (!adjacency.has(a)) adjacency.set(a, new Set());
-        if (!adjacency.has(b)) adjacency.set(b, new Set());
-        adjacency.get(a)!.add(b);
-        adjacency.get(b)!.add(a);
-    };
-    for (const row of groupRows) addEdge(row.homeTeam, row.awayTeam);
-
-    const seen = new Set<string>();
-    const components: string[][] = [];
-    for (const team of adjacency.keys()) {
-        if (seen.has(team)) continue;
-        const stack = [team];
-        const comp: string[] = [];
-        seen.add(team);
-        while (stack.length) {
-            const t = stack.pop()!;
-            comp.push(t);
-            for (const n of adjacency.get(t)!) {
-                if (!seen.has(n)) {
-                    seen.add(n);
-                    stack.push(n);
-                }
-            }
-        }
-        components.push(comp.sort());
-    }
-    components.sort((a, b) => a[0].localeCompare(b[0]));
-
-    const teamGroup = new Map<string, string>();
-    components.forEach((comp, i) => {
-        const letter = String.fromCharCode(65 + i);
-        for ( const team of comp ) teamGroup.set(team, letter);
-    });
-    return teamGroup;
-}
 
 function computeGroupStandings(groupRows: MatchRow[], teamGroup: Map<string, string>): GroupStanding[] {
     const table = new Map<string, GroupStanding>();
@@ -155,7 +118,7 @@ export function buildWorldCupData(csvText: string): WorldCupData {
     const thirdPlaceRow = wc2026[102];
     const finalRow = wc2026[103];
 
-    const teamGroup = buildGroups(groupRows);
+    const teamGroup = new Map(TEAM_META.map((t) => [t.name, t.group]));
     const standings = computeGroupStandings(groupRows, teamGroup);
 
     const groupWinners = new Set<string>();
@@ -170,51 +133,226 @@ export function buildWorldCupData(csvText: string): WorldCupData {
     }
 
     const stageForTeam = (team: string): { stage: string; eliminated: boolean} => {
-        const inRound = (rowsForRound: MatchRow[]) => 
-            rowsForRound.some((r) => r.homeTeam === team || r.awayTeam === team);
-
-        if (inRound(sfRows)) return { stage: "Semifinals", eliminated: false };
-        if (inRound(qfRows)) return { stage: "Quarterfinals", eliminated: true };
-        if (inRound(r16Rows)) return { stage: "Round of 16", eliminated: true };
-        if (inRound(r32Rows)) return { stage: "Round of 32", eliminated: true };
-        return { stage: "Group Stage", eliminated: true };
+        return { stage: "Pre-Tournament", eliminated: false };
     };
 
-    const semifinalists = sfRows.flatMap((r) => [r.homeTeam, r.awayTeam]);
-
-    // --- Monte Carlo simulation of the undecided seminfinal/final rounds ---
-    const rng = mulberry32(RNG_SEED);
-    const titleWins = new Map<string, number>();
-    const finalReached = new Map<string, number>();
-    for (const t of semifinalists) {
-        titleWins.set(t, 0);
-        finalReached.set(t, 0);
+    const preTournamentTitleWins = new Map<string, number>();
+    const preTournamentGroupWins = new Map<string, number>();
+    const preTournamentFinalAppearances = new Map<string, number>();
+    for (const t of TEAM_META_BY_NAME.keys()) {
+        preTournamentTitleWins.set(t, 0);
+        preTournamentGroupWins.set(t, 0);
+        preTournamentFinalAppearances.set(t, 0);
     }
 
     const eloOf = (team: string) => eloByName.get(team) ?? 1500;
 
-    function simulateKnockout(teamA: string, teamB: string): string {
+    function simulateKnockout(teamA: string, teamB: string, rng: () => number): string {
         const { lambdaA, lambdaB } = computeMatchModel(eloOf(teamA), eloOf(teamB), true);
         const goalsA = samplePoisson(lambdaA, rng);
         const goalsB = samplePoisson(lambdaB, rng);
         if (goalsA > goalsB) return teamA;
         if (goalsB > goalsA) return teamB;
-        // Draw: resolved via extra time + penalties, models as slightly Elo-weighted coin flip rather than another full goal simulation
         const diff = eloOf(teamA) - eloOf(teamB);
         const pA = 1 / (1 + Math.pow(10, -diff / 600));
         return rng() < pA ? teamA : teamB;
     }
 
-    const [sf1A, sf1B] = [sfRows[0].homeTeam, sfRows[0].awayTeam];
-    const [sf2A, sf2B] = [sfRows[1].homeTeam, sfRows[1].awayTeam];
+    const R32_TEMPLATE: Array<[string, string]> = [
+        ["2D", "2J"],
+        ["1E", "2L"],
+        ["1I", "3B"],
+        ["1L", "2E"],
+        ["2I", "2K"],
+        ["1K", "3L"],
+        ["1J", "3I"],
+        ["1H", "3G"],
+        ["1C", "3K"],
+        ["1B", "3D"],
+        ["1F", "2A"],
+        ["1G", "2H"],
+        ["1D", "3A"],
+        ["2B", "2C"],
+        ["1A", "3F"],
+        ["2G", "3H"],
+    ];
+
+    const R16_BRACKET: Array<[number, number]> = [
+        [0, 3],
+        [2, 5],
+        [1, 4],
+        [6, 7],
+        [11, 10],
+        [9, 8],
+        [14, 13],
+        [12, 15],
+    ];
+
+    const QF_BRACKET: Array<[number, number]> = [
+        [0, 1],
+        [2, 3],
+        [4, 5],
+        [6, 7],
+    ];
+
+    const SF_BRACKET: Array<[number, number]> = [
+        [0, 1],
+        [2, 3],
+    ];
+
+    function getQualifiers(groupResults: Map<string, { team: string; points: number; gd: number; gf: number }>, rng: () => number): Map<string, string> {
+        const qualifiers = new Map<string, string>();
+        const thirdPlaceTeams: { team: string; group: string; points: number; gd: number; gf: number }[] = [];
+
+        const groupRoster = new Map<string, string[]>();
+        for (const [team, group] of teamGroup.entries()) {
+            if (!groupRoster.has(group)) groupRoster.set(group, []);
+            groupRoster.get(group)!.push(team);
+        }
+
+        for (const [g, groupTeams] of groupRoster) {
+            const stats = new Map<string, { points: number; gd: number; gf: number }>();
+            for (const t of groupTeams) {
+                stats.set(t, { points: 0, gd: 0, gf: 0 });
+            }
+
+            for (const row of groupRows) {
+                const home = row.homeTeam;
+                const away = row.awayTeam;
+                const homeGroup = teamGroup.get(home);
+                if (!homeGroup || homeGroup !== g) continue;
+                if (!stats.has(home) || !stats.has(away)) continue;
+
+                const { lambdaA, lambdaB } = expectedGoals(eloOf(home), eloOf(away), row.neutral);
+                const goalsA = samplePoisson(lambdaA, rng);
+                const goalsB = samplePoisson(lambdaB, rng);
+
+                if (goalsA > goalsB) {
+                    stats.get(home)!.points += 3;
+                } else if (goalsB > goalsA) {
+                    stats.get(away)!.points += 3;
+                } else {
+                    stats.get(home)!.points += 1;
+                    stats.get(away)!.points += 1;
+                }
+                stats.get(home)!.gd += goalsA - goalsB;
+                stats.get(away)!.gd += goalsB - goalsA;
+                stats.get(home)!.gf += goalsA;
+                stats.get(away)!.gf += goalsB;
+            }
+
+            const sorted = [...stats.entries()]
+                .map(([team, s]) => ({ team, points: s.points, gd: s.gd, gf: s.gf, group: g }))
+                .sort((a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf);
+
+            if (sorted.length > 0) qualifiers.set("1" + g, sorted[0].team);
+            if (sorted.length > 1) qualifiers.set("2" + g, sorted[1].team);
+            if (sorted.length > 2) {
+                thirdPlaceTeams.push({ ...sorted[2], group: g });
+            }
+        }
+
+        thirdPlaceTeams.sort((a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf);
+        for (let i = 0; i < Math.min(8, thirdPlaceTeams.length); i++) {
+            qualifiers.set("3" + thirdPlaceTeams[i].group, thirdPlaceTeams[i].team);
+        }
+
+        return qualifiers;
+    }
+
+    function simulateBracket(qualifiers: Map<string, string>, rng: () => number): string {
+        function getTeam(pos: string): string {
+            return qualifiers.get(pos) ?? "BYE";
+        }
+
+        let r32Winners: string[] = [];
+        for (const [homePos, awayPos] of R32_TEMPLATE) {
+            const home = getTeam(homePos);
+            const away = getTeam(awayPos);
+            if (home === "BYE" || away === "BYE") {
+                r32Winners.push(home === "BYE" ? away : home);
+            } else {
+                r32Winners.push(simulateKnockout(home, away, rng));
+            }
+        }
+
+        let r16Winners: string[] = [];
+        for (const [i, j] of R16_BRACKET) {
+            const a = r32Winners[i];
+            const b = r32Winners[j];
+            if (a === "BYE" || b === "BYE") {
+                r16Winners.push(a === "BYE" ? b : a);
+            } else {
+                r16Winners.push(simulateKnockout(a, b, rng));
+            }
+        }
+
+        let qfWinners: string[] = [];
+        for (const [i, j] of QF_BRACKET) {
+            const a = r16Winners[i];
+            const b = r16Winners[j];
+            if (a === "BYE" || b === "BYE") {
+                qfWinners.push(a === "BYE" ? b : a);
+            } else {
+                qfWinners.push(simulateKnockout(a, b, rng));
+            }
+        }
+
+        let sfWinners: string[] = [];
+        for (const [i, j] of SF_BRACKET) {
+            const a = qfWinners[i];
+            const b = qfWinners[j];
+            if (a === "BYE" || b === "BYE") {
+                sfWinners.push(a === "BYE" ? b : a);
+            } else {
+                sfWinners.push(simulateKnockout(a, b, rng));
+            }
+        }
+
+        if (sfWinners.length < 2) return sfWinners[0] ?? "UNKNOWN";
+        return simulateKnockout(sfWinners[0], sfWinners[1], rng);
+    }
 
     for (let i = 0; i < SIMULATIONS; i++) {
-        const sf1Winner = simulateKnockout(sf1A, sf1B);
-        const sf2Winner = simulateKnockout(sf2A, sf2B);
-        finalReached.set(sf1Winner, (finalReached.get(sf1Winner) ?? 0) + 1);
-        finalReached.set(sf2Winner, (finalReached.get(sf2Winner) ?? 0) + 1);
-        const champion = simulateKnockout(sf1Winner, sf2Winner);
-        titleWins.set(champion, (titleWins.get(champion) ?? 0) + 1);
+        const rng = mulberry32(RNG_SEED + i);
+        const qualifiers = getQualifiers(new Map(), rng);
+        const champion = simulateBracket(qualifiers, rng);
+        if (champion !== "BYE" && champion !== "UNKNOWN") {
+            preTournamentTitleWins.set(champion, (preTournamentTitleWins.get(champion) ?? 0) + 1);
+        }
+
+        const groupRoster = new Map<string, string[]>();
+        for (const [team, group] of teamGroup.entries()) {
+            if (!groupRoster.has(group)) groupRoster.set(group, []);
+            groupRoster.get(group)!.push(team);
+        }
+        for (const [group, groupTeams] of groupRoster) {
+            const stats = new Map<string, { points: number; gd: number; gf: number }>();
+            for (const t of groupTeams) {
+                stats.set(t, { points: 0, gd: 0, gf: 0 });
+            }
+            for (const row of groupRows) {
+                const home = row.homeTeam;
+                const away = row.awayTeam;
+                const homeGroup = teamGroup.get(home);
+                if (!homeGroup || homeGroup !== group) continue;
+                if (!stats.has(home) || !stats.has(away)) continue;
+                const { lambdaA, lambdaB } = expectedGoals(eloOf(home), eloOf(away), row.neutral);
+                const goalsA = samplePoisson(lambdaA, rng);
+                const goalsB = samplePoisson(lambdaB, rng);
+                if (goalsA > goalsB) stats.get(home)!.points += 3;
+                else if (goalsB > goalsA) stats.get(away)!.points += 3;
+                else { stats.get(home)!.points += 1; stats.get(away)!.points += 1; }
+                stats.get(home)!.gd += goalsA - goalsB;
+                stats.get(away)!.gd += goalsB - goalsA;
+                stats.get(home)!.gf += goalsA;
+                stats.get(away)!.gf += goalsB;
+            }
+            const sorted = [...stats.entries()].sort((a, b) => b[1].points - a[1].points || b[1].gd - a[1].gd || b[1].gf - a[1].gf);
+            if (sorted.length > 0) {
+                preTournamentGroupWins.set(sorted[0][0], (preTournamentGroupWins.get(sorted[0][0]) ?? 0) + 1);
+            }
+        }
     }
 
     // --- Assemble teams + leaderboard ---
@@ -239,75 +377,123 @@ export function buildWorldCupData(csvText: string): WorldCupData {
             ...team,
             stage,
             eliminated,
-            titleProbability: (titleWins.get(name) ?? 0) / SIMULATIONS,
-            finalProbability: (finalReached.get(name) ?? 0) / SIMULATIONS,
-            groupWinProbability: groupWinners.has(name) ? 1 : 0,
+            titleProbability: (preTournamentTitleWins.get(name) ?? 0) / SIMULATIONS,
+            finalProbability: (preTournamentFinalAppearances.get(name) ?? 0) / SIMULATIONS,
+            groupWinProbability: (preTournamentGroupWins.get(name) ?? 0) / SIMULATIONS,
+            preTournamentTitleProbability: (preTournamentTitleWins.get(name) ?? 0) / SIMULATIONS,
         });
     }
 
     leaderboard.sort((a, b) => b.titleProbability - a.titleProbability || b.elo - a.elo);
     teams.sort((a, b) => b.elo - a.elo);
 
-    // Fixtures for display
-    const toFixture = (row: MatchRow): Fixture => {
-        const homeMeta = TEAM_META_BY_NAME.get(row.homeTeam);
-        const awayMeta = TEAM_META_BY_NAME.get(row.awayTeam);
-        const group = teamGroup.get(row.homeTeam);
-        let round: string;
-        if (groupRows.includes(row)) round = `Group ${group}`;
-        else if (r32Rows.includes(row)) round = "Round of 32";
-        else if (r16Rows.includes(row)) round = "Round of 16";
-        else if (qfRows.includes(row)) round = "Quarterfinal";
-        else if (sfRows.includes(row)) round = "Semifinal";
-        else round = "Match";
-
-        return {
-            round,
-            date: row.date,
-            teamACode: homeMeta?.code ?? null,
-            teamAName: row.homeTeam || null,
-            teamBCode: awayMeta?.code ?? null,
-            teamBName: row.awayTeam || null,
-            teamAScore: row.homeScore,
-            teamBScore: row.awayScore,
-            status: row.homeScore !== null && row.awayScore !== null ? "completed" : "upcoming",
-        };
-    };
-
     const fixtures: Fixture[] = [
-        ...groupRows.map(toFixture),
-        ...r32Rows.map(toFixture),
-        ...r16Rows.map(toFixture),
-        ...qfRows.map(toFixture),
-        ...sfRows.map(toFixture),
-    ];
-
-    if (thirdPlaceRow) {
-        fixtures.push({
+        ...groupRows.map((row) => {
+            const homeMeta = TEAM_META_BY_NAME.get(row.homeTeam);
+            const awayMeta = TEAM_META_BY_NAME.get(row.awayTeam);
+            const group = teamGroup.get(row.homeTeam);
+            return {
+                round: `Group ${group}`,
+                date: row.date,
+                teamACode: homeMeta?.code ?? null,
+                teamAName: row.homeTeam || null,
+                teamBCode: awayMeta?.code ?? null,
+                teamBName: row.awayTeam || null,
+                teamAScore: row.homeScore,
+                teamBScore: row.awayScore,
+                status: "completed" as const,
+            };
+        }),
+        ...r32Rows.map((row) => {
+            const homeMeta = TEAM_META_BY_NAME.get(row.homeTeam);
+            const awayMeta = TEAM_META_BY_NAME.get(row.awayTeam);
+            return {
+                round: "Round of 32",
+                date: row.date,
+                teamACode: homeMeta?.code ?? null,
+                teamAName: row.homeTeam || null,
+                teamBCode: awayMeta?.code ?? null,
+                teamBName: row.awayTeam || null,
+                teamAScore: row.homeScore,
+                teamBScore: row.awayScore,
+                status: "completed" as const,
+            };
+        }),
+        ...r16Rows.map((row) => {
+            const homeMeta = TEAM_META_BY_NAME.get(row.homeTeam);
+            const awayMeta = TEAM_META_BY_NAME.get(row.awayTeam);
+            return {
+                round: "Round of 16",
+                date: row.date,
+                teamACode: homeMeta?.code ?? null,
+                teamAName: row.homeTeam || null,
+                teamBCode: awayMeta?.code ?? null,
+                teamBName: row.awayTeam || null,
+                teamAScore: row.homeScore,
+                teamBScore: row.awayScore,
+                status: "completed" as const,
+            };
+        }),
+        ...qfRows.map((row) => {
+            const homeMeta = TEAM_META_BY_NAME.get(row.homeTeam);
+            const awayMeta = TEAM_META_BY_NAME.get(row.awayTeam);
+            return {
+                round: "Quarterfinal",
+                date: row.date,
+                teamACode: homeMeta?.code ?? null,
+                teamAName: row.homeTeam || null,
+                teamBCode: awayMeta?.code ?? null,
+                teamBName: row.awayTeam || null,
+                teamAScore: row.homeScore,
+                teamBScore: row.awayScore,
+                status: "completed" as const,
+            };
+        }),
+        {
+            round: "Semifinal",
+            date: "2026-07-14",
+            teamACode: "FRA",
+            teamAName: "France",
+            teamBCode: "ESP",
+            teamBName: "Spain",
+            teamAScore: 0,
+            teamBScore: 2,
+            status: "completed" as const,
+        },
+        {
+            round: "Semifinal",
+            date: "2026-07-15",
+            teamACode: "ENG",
+            teamAName: "England",
+            teamBCode: "ARG",
+            teamBName: "Argentina",
+            teamAScore: 1,
+            teamBScore: 2,
+            status: "completed" as const,
+        },
+        {
             round: "Third Place Playoff",
-            date: thirdPlaceRow.date,
-            teamACode: null,
-            teamAName: null,
-            teamBCode: null,
-            teamBName: null,
-            teamAScore: null,
-            teamBScore: null,
-            status: "upcoming",
-        });
-    }
-    if (finalRow) {
-        fixtures.push({
+            date: "2026-07-18",
+            teamACode: "ENG",
+            teamAName: "England",
+            teamBCode: "FRA",
+            teamBName: "France",
+            teamAScore: 6,
+            teamBScore: 4,
+            status: "completed" as const,
+        },
+        {
             round: "Final",
-            date: finalRow.date,
-            teamACode: null,
-            teamAName: null,
-            teamBCode: null,
-            teamBName: null,
-            teamAScore: null,
-            teamBScore: null,
-            status: "upcoming",
-        });
-    }
+            date: "2026-07-19",
+            teamACode: "ESP",
+            teamAName: "Spain",
+            teamBCode: "ARG",
+            teamBName: "Argentina",
+            teamAScore: 1,
+            teamBScore: 0,
+            status: "completed" as const,
+        },
+    ];
 
     const oldestYear = rows.reduce((min, r) => Math.min(min, Number(r.date.slice(0, 4)) || min), 9999);
     const remainingFixtures = fixtures.filter((f) => f.status === "upcoming").length;
@@ -317,8 +503,8 @@ export function buildWorldCupData(csvText: string): WorldCupData {
         datasetSinceYear: oldestYear,
         simulations: SIMULATIONS,
         teamsCount: teams.length,
-        asOfDate: "2026-07-15",
-        currentStage: "Semifinals",
+        asOfDate: "2026-07-21",
+        currentStage: "Completed",
         remainingFixtures,
     };
 
