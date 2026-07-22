@@ -24,8 +24,16 @@ export default defineConfig({
 				"..",
 				"attached_assets",
 			),
+			"@tanstack/react-query": path.resolve(
+				__dirname,
+				"..",
+				"..",
+				"node_modules",
+				"@tanstack",
+				"react-query",
+			),
 		},
-		dedupe: ["react", "react-dom"],
+		dedupe: ["react", "react-dom", "@tanstack/react-query"],
 	},
 	root: path.resolve(__dirname),
 	build: {
