@@ -3,7 +3,7 @@
 	"version": "0.0.0",
 	"type": "module",
 	"scripts": {
-		"build": "node ./build.mjs",
+		"build": "NODE_ENV=production node ./build.mjs",
 		"start": "node --enable-source-maps ./dist/index.mjs",
 		"dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
 		"typecheck": "tsc -p tsconfig.json --noEmit"
