@@ -4,6 +4,8 @@
 		"tsBuildInfoFile": ".tsbuildinfo",
 		"outDir": "dist",
 		"rootDir": "src",
+		"target": "ES2020",
+		"module": "CommonJS",
 		"types": ["node"]
 	},
 	"include": ["src"],
