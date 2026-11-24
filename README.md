@@ -15,9 +15,8 @@ A full-stack sports analytics platform for the 2026 FIFA World Cup. Built with h
 ### Tournament Predictions
 
 - 10,000 seeded Monte Carlo simulations of the complete 2026 bracket: Group Stage, Round of 32, Round of 16, Quarterfinals, Semifinals, and Final
-- Title probabilities for every nation, including pre-tournament baselines for comparison
+- Title probabilities for every nation
 - Group win probabilities across all 12 groups (A-L)
-- Final appearance likelihoods and elimination tracking
 
 ![Title Probabilities](images/titleprobability.png)
 
@@ -237,6 +236,7 @@ worldcuporacle/
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
+| `/api/healthz` | GET | Health check |
 | `/api/worldcup/meta` | GET | Tournament metadata (simulations, teams, stage) |
 | `/api/worldcup/teams` | GET | All 48 teams with flags, confederations, and Elo |
 | `/api/worldcup/leaderboard` | GET | Title probabilities and group win chances |
