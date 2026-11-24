@@ -5,6 +5,7 @@ import { CountUp } from "./CountUp";
 import { motion, AnimatePresence } from "framer-motion";
 import { Swords, Info, AlertCircle, RefreshCw } from "lucide-react";
 import { TeamFlag } from "./TeamFlag";
+import { cn } from "@/lib/utils";
 
 export function MatchSimulator() {
 	const { data: teams } = useListTeams();
@@ -12,10 +13,13 @@ export function MatchSimulator() {
 
 	const [teamACode, setTeamACode] = useState<string>("");
 	const [teamBCode, setTeamBCode] = useState<string>("");
+	const [seed, setSeed] = useState<number | null>(null);
 
 	const handleSimulate = () => {
 		if (!teamACode || !teamBCode) return;
-		simulateMatch.mutate({ data: { teamACode, teamBCode } });
+		const nextSeed = Date.now();
+		setSeed(nextSeed);
+		simulateMatch.mutate({ data: { teamACode, teamBCode, seed: nextSeed } });
 	};
 
 	const result = simulateMatch.data;
@@ -40,6 +44,7 @@ export function MatchSimulator() {
 						value={teamACode}
 						onChange={(val) => {
 							setTeamACode(val);
+							setSeed(null);
 							simulateMatch.reset();
 						}}
 						placeholder="Home Team"
@@ -55,6 +60,7 @@ export function MatchSimulator() {
 						value={teamBCode}
 						onChange={(val) => {
 							setTeamBCode(val);
+							setSeed(null);
 							simulateMatch.reset();
 						}}
 						placeholder="Away Team"
@@ -186,9 +192,48 @@ export function MatchSimulator() {
 										{result.teamBCode}
 									</span>
 								</div>
-							</div>
+								</div>
 
-							{/* Probabilities */}
+								{result && (
+									<div className="mt-4 pt-4 border-t border-border/50 flex flex-col items-center gap-1">
+										<span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+											Sampled outcome (seed {result.seed})
+										</span>
+										<div className="flex items-center gap-2 font-mono font-bold">
+											<span
+												className={cn(
+													"w-8 text-center",
+													result.sampledWinner === "A" ? "text-primary" : "text-foreground",
+												)}
+											>
+												{result.teamASampledGoals}
+											</span>
+											<span className="text-xs text-muted-foreground">-</span>
+											<span
+												className={cn(
+													"w-8 text-center",
+													result.sampledWinner === "B" ? "text-primary" : "text-foreground",
+												)}
+											>
+												{result.teamBSampledGoals}
+											</span>
+											<span
+												className={cn(
+													"text-xs",
+													result.sampledWinner === "A"
+														? "text-primary font-bold"
+														: result.sampledWinner === "B"
+														? "text-blue-500 font-bold"
+														: "text-muted-foreground",
+												)}
+											>
+												{result.sampledWinner === "draw" ? "Draw" : result.sampledWinner === "A" ? result.teamACode + " wins" : result.teamBCode + " wins"}
+											</span>
+										</div>
+									</div>
+								)}
+
+								{/* Probabilities */}
 							<div className="space-y-4">
 								<div className="flex justify-between text-xs font-mono text-muted-foreground uppercase">
 									<span>{result.teamACode} Win</span>

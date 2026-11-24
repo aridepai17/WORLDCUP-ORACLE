@@ -95,3 +95,18 @@ export function samplePoisson(lambda: number, rng: () => number): number {
     } while (p > limit);
     return k - 1;
 }
+
+export interface MatchSample {
+    goalsA: number;
+    goalsB: number;
+    winner: "A" | "B" | "draw";
+}
+
+export function sampleMatch(eloA: number, eloB: number, seed: number, neutral = true): MatchSample {
+    const { lambdaA, lambdaB } = expectedGoals(eloA, eloB, neutral);
+    const rng = mulberry32(seed);
+    const goalsA = samplePoisson(lambdaA, rng);
+    const goalsB = samplePoisson(lambdaB, rng);
+    const winner = goalsA > goalsB ? "A" : goalsB > goalsA ? "B" : "draw";
+    return { goalsA, goalsB, winner };
+}

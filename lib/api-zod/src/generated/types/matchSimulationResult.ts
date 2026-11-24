@@ -18,4 +18,8 @@ export interface MatchSimulationResult {
   teamBExpectedGoals: number;
   teamALikelyGoals: number;
   teamBLikelyGoals: number;
+  teamASampledGoals: number;
+  teamBSampledGoals: number;
+  sampledWinner: "A" | "B" | "draw";
+  seed: number;
 }

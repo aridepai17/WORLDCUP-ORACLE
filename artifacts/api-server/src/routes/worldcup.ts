@@ -8,7 +8,7 @@ import {
 	SimulateMatchResponse,
 } from "@workspace/api-zod";
 import { getWorldCupData } from "../lib/worldcup/cache";
-import { computeMatchModel } from "../lib/worldcup/poisson";
+import { computeMatchModel, sampleMatch } from "../lib/worldcup/poisson";
 import { TEAM_META_BY_CODE } from "../lib/worldcup/teamMeta";
 
 const router: IRouter = Router();
@@ -55,9 +55,16 @@ router.post("/worldcup/simulate-match", (req, res) => {
 		return;
 	}
 
+	const seed = body.seed ?? Date.now();
 	const model = computeMatchModel(
 		eloByName.get(teamA.name) ?? 1500,
 		eloByName.get(teamB.name) ?? 1500,
+		true,
+	);
+	const sample = sampleMatch(
+		eloByName.get(teamA.name) ?? 1500,
+		eloByName.get(teamB.name) ?? 1500,
+		seed,
 		true,
 	);
 
@@ -73,6 +80,10 @@ router.post("/worldcup/simulate-match", (req, res) => {
 		teamBExpectedGoals: model.lambdaB,
 		teamALikelyGoals: model.likelyA,
 		teamBLikelyGoals: model.likelyB,
+		teamASampledGoals: sample.goalsA,
+		teamBSampledGoals: sample.goalsB,
+		sampledWinner: sample.winner,
+		seed,
 	});
 
 	req.log.info({ teamA: teamA.code, teamB: teamB.code }, "simulated match");

@@ -91,7 +91,8 @@ export const ListFixturesResponse = zod.array(ListFixturesResponseItem)
  */
 export const SimulateMatchBody = zod.object({
   "teamACode": zod.string(),
-  "teamBCode": zod.string()
+  "teamBCode": zod.string(),
+  "seed": zod.number().optional()
 })
 
 export const SimulateMatchResponse = zod.object({
@@ -105,7 +106,11 @@ export const SimulateMatchResponse = zod.object({
   "teamAExpectedGoals": zod.number(),
   "teamBExpectedGoals": zod.number(),
   "teamALikelyGoals": zod.number(),
-  "teamBLikelyGoals": zod.number()
+  "teamBLikelyGoals": zod.number(),
+  "teamASampledGoals": zod.number(),
+  "teamBSampledGoals": zod.number(),
+  "sampledWinner": zod.enum(["A", "B", "draw"]),
+  "seed": zod.number()
 })
 
 

@@ -74,6 +74,7 @@ export interface Fixture {
 export interface MatchSimulationInput {
   teamACode: string;
   teamBCode: string;
+  seed?: number;
 }
 
 export interface MatchSimulationResult {
@@ -88,6 +89,10 @@ export interface MatchSimulationResult {
   teamBExpectedGoals: number;
   teamALikelyGoals: number;
   teamBLikelyGoals: number;
+  teamASampledGoals: number;
+  teamBSampledGoals: number;
+  sampledWinner: "A" | "B" | "draw";
+  seed: number;
 }
 
 export interface TournamentMeta {

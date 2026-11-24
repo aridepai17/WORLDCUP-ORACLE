@@ -9,4 +9,5 @@
 export interface MatchSimulationInput {
   teamACode: string;
   teamBCode: string;
+  seed?: number;
 }
